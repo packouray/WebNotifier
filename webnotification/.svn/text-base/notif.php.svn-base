@@ -1,0 +1,36 @@
+<?php
+      
+      require_once(dirname(__FILE__).'/../../config/config.inc.php');
+      require_once(dirname(__FILE__).'/../../config/settings.inc.php');
+      require_once(dirname(__FILE__).'/../../classes/Cookie.php');
+
+      $cookie = new Cookie('psAdmin');
+
+    if (isset($cookie->id_employee) && $cookie->id_employee > 0) {
+      $employe = $cookie->id_employee;
+      $profile = $cookie->profile;
+    }
+    $profs = DB::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+    if (strpos($profs, $profile) !== FALSE) {
+      //on parcourt la table contenant les infos de la commande.
+      $commandes = Db::getInstance()->ExecuteS('SELECT `id` FROM `'._DB_PREFIX_.'check_employe` WHERE `reception` = 0');
+      //pour chacune des commandes on récupere les infos dans des variables et on check son statut courrant
+      foreach ($commandes as $commande) {
+        $id_commande = $commande['id'];
+        $statut_commande = Db::getInstance()->getValue('SELECT `current_state` FROM `'._DB_PREFIX_.'orders` WHERE `id_cart` = '.$id_commande.'');
+        //si son statut courrant est égale à 2 c'est que le payement de la commande a été accepté => commande validée, on mets à jour le statut de la commande, on envoi ensuite les infos de la commande au .tpl et on appel celui-ci.
+        if ($statut_commande == 2) {
+          $reception = Db::getInstance()->getValue('SELECT `reception` FROM `'._DB_PREFIX_.'check_employe` WHERE `id_employe` = '.$employe.' AND `id` = '.$id_commande.'');
+              if ($reception == 0) {
+                $update_tab_employe = DB::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'check_employe` SET `reception` = 1 WHERE `id` = '.$id_commande.' AND `id_employe` = '.$employe.'');
+                  echo '<script type="text/javascript" id="sc">
+                      simulate(document.getElementById("notify"), "click");
+                      simulate(document.getElementById("show"), "click");
+                      simulate(document.getElementById("start_audio"), "click");
+                  </script>';
+              }
+        }
+
+      }
+    }
+ ?>

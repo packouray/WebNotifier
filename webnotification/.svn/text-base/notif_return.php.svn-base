@@ -1,0 +1,32 @@
+<?php
+      
+    require_once(dirname(__FILE__).'/../../config/config.inc.php');
+    require_once(dirname(__FILE__).'/../../config/settings.inc.php');
+    require_once(dirname(__FILE__).'/../../classes/Cookie.php');
+
+    $cookie = new Cookie('psAdmin');
+
+    if (isset($cookie->id_employee) && $cookie->id_employee > 0) {
+      $employe = $cookie->id_employee;
+      $profile = $cookie->profile;
+    }
+    $profs = DB::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+    if (strpos($profs, $profile) !== FALSE) {
+        $returns = Db::getInstance()->ExecuteS('SELECT `id_return` FROM `'._DB_PREFIX_.'check_returns` WHERE `reception` = 0');
+        foreach ($returns as $return) {
+            $id_return = $return['id_return'];
+            $statut_return = Db::getInstance()->getValue('SELECT `state` FROM `'._DB_PREFIX_.'order_return` WHERE `id_order_return` = '.$id_return.'');
+            if ($statut_return == 1) {
+                $reception = Db::getInstance()->getValue('SELECT `reception` FROM `'._DB_PREFIX_.'check_returns` WHERE `id_employe` = '.$employe.' AND `id_return` = '.$id_return.'');
+                    if ($reception == 0) {
+                        $update_tab_return = DB::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'check_returns` SET `reception` = 1 WHERE `id_return` = '.$id_return.' AND `id_employe` = '.$employe.'');
+                        echo '<script type="text/javascript" id="sc3">
+                            simulate(document.getElementById("notify"), "click");
+                            simulate(document.getElementById("show"), "click");
+                            simulate(document.getElementById("start_audio"), "click");
+                        </script>';
+                    }
+            }
+        }
+    }
+?>

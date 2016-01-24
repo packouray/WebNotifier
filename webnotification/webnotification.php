@@ -1,0 +1,627 @@
+<?php
+
+if (!defined('_PS_VERSION_'))
+	exit;
+
+require_once(_PS_MODULE_DIR_.'webnotification/models/Modelwebnotification.php');
+
+class webnotification extends Module
+{
+	protected $_html = '';
+
+	public function __construct()
+	{
+		$this->name = 'webnotification';
+		$this->tab = 'Notif_web';
+		$this->version = '1.0';
+		$this->author = 'Periscope';
+		$this->need_instance = 0;
+		//$this->table = 'check_permission';
+		$this->className = 'ModelWebnotification';
+		$this->bootstrap = true;
+
+		parent::__construct();
+
+		$this->displayName = $this->l('web notifications');
+		$this->description = $this->l('Send a web notification to the current employee when a new message, a new order or a new return is placed on the shop.');
+		$this->confirmUninstall = $this->l('Are you sure you want to delete Notifications Web ?');
+
+	}
+
+	public function install()
+	{
+		include(dirname(__FILE__).'/sql/install.php');
+		foreach ($sql as $query)
+			if (!Db::getInstance()->Execute($query))
+				return false;
+		if (!parent::install() || !$this->registerHook('actionValidateOrder') || !$this->registerHook('displayBackOfficeFooter')) {
+			return false;
+		}
+		return true;
+	}
+
+	public function uninstall()
+	{
+		include(dirname(__FILE__).'/sql/uninstall.php');
+		foreach ($sql as $query) {
+			if (!Db::getInstance()->Execute($query))
+				return false;
+		}
+
+		if (!parent::uninstall())
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	public function hookactionValidateOrder($params)
+	{
+		//on catch toutes les infos utiles relative a la commande.
+		$id_cart = $params['order']->id_cart;
+		$reference = $params['order']->reference;
+		$amount = $params['order']->total_paid_real;
+		$currency_sign = $this->context->currency->iso_code;
+		$products = $params['cart']->getProducts(true);
+		foreach ($products as $product) {
+			$cart_content[] = $product['name'];
+		}
+		$all_products = implode(",", $cart_content);
+		$taille = strlen($all_products);
+		if ($taille > 50){
+			$cutstr = substr($all_products, 0, 50);
+			$extension = '...';
+			$cart = $cutstr . $extension;
+		}
+		else {
+			$cart = $all_products; 
+		}
+		$epure_cart = str_replace("'", " ", $cart);
+		$order_date = $params['cart']->date_add; 
+		$cut_date = substr($order_date, 0, 10);
+      	$epure_date = str_replace("-", "", $cut_date);
+		//on les stock en bdd.
+		DB::getInstance()->insert('check_orders', array('id' => (int)$id_cart, 'reference' => (string)$reference, 'amount' => (float)$amount, 'currency_sign' => (string)$currency_sign, 'cart_content' => (string)$epure_cart, 'date' => (int)$epure_date));
+	}
+
+	public function getContent()
+	{
+		global $cookie;
+
+		//on recupere l'id de l'employe courrant.
+		$employee = $cookie->id_employee;
+		$employee_profile = $cookie->profile;
+
+		$check_existance = Db::getInstance()->ExecuteS('SELECT `id_employe` FROM `'._DB_PREFIX_.'check_permission`');
+		$taille = count($check_existance);
+		for ($i = 0; $i < $taille; $i++) {
+	     	$existance[] = $check_existance[$i]['id_employe'];
+		}
+		//nombre d'occurences de l'id catché dans la table.
+		$occurences = count(array_keys($existance, $employee));
+		//si id de l'employe non present dans la table.
+		if ($occurences == 0) {
+			//on l'insert dans celle-ci
+			DB::getInstance()->insert('check_permission', array('id_employe' => (int)$employee));
+		}
+		$this->_html .= '<span><font color="red">ATTENTION : You don\'t have the permission to access the Notifications Web module\'s parameters.</font></span><br/><span><font color="red">Please get closer to your SuperAdmin to solve this issue.</font></span>';
+		$output = '';
+		$string = 'SuperAdmin';
+		$Sadmin_id_profile = DB::getInstance()->getValue("SELECT `id_profile` FROM `"._DB_PREFIX_."profile_lang` WHERE `name` = '$string'"); 
+		$profs = DB::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+    
+		if ($employee_profile == $Sadmin_id_profile) {
+			//si action sauvegarder.
+			if (Tools::isSubmit('submitconfigurationadmin'))
+			{
+				$error = 0;
+				//on recupere toutes les valeures des parametres.
+				$val1 = Tools::getValue('notif_message');
+				$val2 = Tools::getValue('notif_commande');
+				$val3 = Tools::getValue('notif_retour');
+				$val7 = Tools::getValue('notif_ots');
+				$val4 = Tools::getValue('time');
+				$val6 = Tools::getValue('ots');
+				$val8 = Tools::getValue('notif_customer');
+				if (isset($_POST['profile'])) {
+					$val5[] = $_POST['profile'];
+					$allprofiles = implode(";", $val5[0]);
+					$nb_lignes = DB::getInstance()->getValue('SELECT COUNT(`profile`) FROM `'._DB_PREFIX_.'check_profile`');
+					if ($nb_lignes == 0) {
+						DB::getInstance()->insert('check_profile', array('profile' => (string)$allprofiles));
+					}
+					else
+						DB::getInstance()->update('check_profile', array('profile' => (string)$allprofiles));
+				}
+				/*
+				else if (!isset($_POST['profile']))
+				Db::getInstance()->delete('check_profile');
+				*/
+				if (!empty($val4) && $val4 > 60 && !is_int($val4)) {
+					$output .= $this->displayError($this->l('update Error'));
+				}		
+				else {
+					$val4 = (empty($val4)) ? 10 : $val4 ;
+					DB::getInstance()->update('check_permission', array('notif_message' => (int)$val1, 'notif_commande' => (int)$val2, 'notif_customer' => (int)$val8, 'notif_retour' => (int)$val3, 'notif_ots' => (int)$val7), 'id_employe = '.$employee.'');
+					DB::getInstance()->update('check_permission', array('time' => (int)$val4));
+					DB::getInstance()->update('check_permission', array('ots' => (int)$val6), 'id_employe = '.$employee.'');
+				}
+				$output .= $this->displayConfirmation($this->l('Settings updated'));
+			}
+			return $output.$this->renderFormAdmin();
+		}
+		else if ($employee_profile != $Sadmin_id_profile && strpos($profs, $employee_profile) !== FALSE) {
+			if (Tools::isSubmit('submitconfigurationemployee'))
+			{
+				$error = 0;
+				//on recupere toutes les valeures des parametres.
+				$val1 = Tools::getValue('notif_message');
+				$val2 = Tools::getValue('notif_commande');
+				$val3 = Tools::getValue('notif_retour');
+				$val5 = Tools::getValue('notif_ots');
+				$val4 = Tools::getValue('ots');
+				$val6 = Tools::getValue('notif_customer');
+				DB::getInstance()->update('check_permission', array('notif_message' => (int)$val1, 'notif_commande' => (int)$val2, 'notif_customer' => (int)$val6, 'notif_retour' => (int)$val3, 'notif_ots' => (int)$val5, 'ots' => (int)$val4), 'id_employe = '.$employee.'');
+				$output .= $this->displayConfirmation($this->l('Settings updated'));
+			}
+			return $output.$this->renderFormEmployee();
+		}
+		else {
+			return $this->_html;
+		}
+	}
+
+	public function renderFormAdmin()
+	{
+		global $smarty;
+
+		$profiles = DB::getInstance()->ExecuteS('SELECT `name` FROM `'._DB_PREFIX_.'profile_lang`');
+		$all[] = Profile::getProfiles($this->context->language->id);
+		$taille = count($all[0]);
+		foreach ($all as $a) {
+			for ($i = 0; $i <= $taille - 1; $i++)
+				$choices[] = array('name' => $a[$i]['name'], 'id_profile' => (int)$a[$i]['id_profile'], 'val' => (int)$a[$i]['id_profile']);
+		}
+		$actual_profiles = Db::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+		$profiles_id = explode(";", $actual_profiles);
+		foreach ($profiles_id as $profile_id) {
+			$profiles_name[] = DB::getInstance()->getValue('SELECT `name` FROM `'._DB_PREFIX_.'profile_lang` WHERE `id_profile` = '.$profile_id.'');
+			$check_existance = Db::getInstance()->ExecuteS('SELECT `id_employe` FROM `'._DB_PREFIX_.'check_permission`');
+			$taille = count($check_existance);
+			for ($i = 0; $i < $taille; $i++) {
+		     	$existance[] = $check_existance[$i]['id_employe'];
+			}
+			//nombre d'occurences de l'id catché dans la table.
+			$occurences = count(array_keys($existance, $profile_id));
+			//si id de l'employe non present dans la table.
+			if ($occurences == 0) {
+				//on l'insert dans celle-ci
+				DB::getInstance()->insert('check_permission', array('id_employe' => (int)$profile_id));
+			}
+		}
+		$string = strtolower(implode(" / ", $profiles_name));
+		$desc2 = $this->l('NOTE : The SuperAdmin is always marked by default.');
+		
+		$fields_form = array(
+			'form' => array(
+				'legend' => array(
+					'title' => $this->l('Settings'),
+					'icon' => 'icon-cogs'
+				),
+				'input' => array(
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New message notification'),
+						'name' => 'notif_message',
+						'desc' => $this->l('Receive a notification when a message is placed.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New order notification'),
+						'name' => 'notif_commande',
+						'desc' => $this->l('Receive a notification when an order is placed.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New customer notification'),
+						'name' => 'notif_customer',
+						'desc' => $this->l('Receive a notification when a new customer has just created an account.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New return notification'),
+						'name' => 'notif_retour',
+						'desc' => $this->l('Receive a notification when a return is requested.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('Out of stock notification'),
+						'name' => 'notif_ots',
+						'desc' => $this->l('Receive a notification when a product is considered as out of stock.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'name' => 'profile[]',
+						'type' => 'checkbox',
+						'label' => $this->l('Activated for :  ').$string,
+						'desc' => $this->l('The module will only run for the marked employees.').$desc2,
+						'multiple' => true,
+						'values' => array(
+							'query' => $choices,
+							'id' => 'id_profile',
+							'name' => 'name',
+							'val' => 'id_profile'
+							),
+						'expand' => array(
+							'print_total' => count($choices),
+							'default' => 'show',
+							'show' => array('text' => $this->l('show'), 'icon' => 'plus-sign-alt'),
+							'hide' => array('text' => $this->l('hide'), 'icon' => 'minus-sign-alt')
+							)
+					),
+					array(
+						'type' => 'text',
+						'label' => $this->l('Threshold of out of stock'),
+						'name' => 'ots',
+						'class' => 'fixed-width-xs',
+						'desc' => $this->l('Set the value for which a product is considered as out of stock. The value must be positive.')
+					),
+					array(
+						'type' => 'text',
+						'label' => $this->l('Notifications interval'),
+						'name' => 'time',
+						'class' => 'fixed-width-xs',
+						'desc' => $this->l('set a time interval between 1 and 10 (seconds) for which the notifications will be display.')
+					),
+				),
+				'submit' => array(
+					'title' => $this->l('Save')
+				)
+			),
+		);
+
+		$helper = new HelperForm();
+		$helper->show_toolbar = false;
+		$helper->table =  $this->table;
+		$lang = new Language((int)Configuration::get('PS_LANG_DEFAULT'));
+		$helper->default_form_language = $lang->id;
+		$helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
+		$this->fields_form = array();
+
+		$helper->identifier = $this->identifier;
+		$helper->submit_action = 'submitconfigurationadmin';
+		$helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+		$helper->token = Tools::getAdminTokenLite('AdminModules');
+		$helper->tpl_vars = array(
+			'fields_value' => $this->getConfigFieldsValuesAdmin(),
+			'languages' => $this->context->controller->getLanguages(),
+			'id_language' => $this->context->language->id
+		);
+		return $helper->generateForm(array($fields_form));
+	}
+
+	public function getConfigFieldsValuesAdmin()
+	{
+		global $cookie;
+
+		$employee = $cookie->id_employee;
+		$mess = DB::getInstance()->getValue('SELECT `notif_message` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$com = DB::getInstance()->getValue('SELECT `notif_commande` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$cus = DB::getInstance()->getValue('SELECT `notif_customer` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$ret = DB::getInstance()->getValue('SELECT `notif_retour` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$nots = DB::getInstance()->getValue('SELECT `notif_ots` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$time = DB::getInstance()->getValue('SELECT `time` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$ots = DB::getInstance()->getValue('SELECT `ots` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+
+		$config_fields = array(
+			'notif_message' => (bool)Tools::getValue('notif_message', $mess),
+			'notif_commande' => (bool)Tools::getValue('notif_commande', $com),
+			'notif_customer' => (bool)Tools::getValue('notif_customer', $cus),
+			'notif_retour' => (bool)Tools::getValue('notif_retour', $ret),
+			'notif_ots' => (bool)Tools::getValue('notif_ots', $nots),
+			'time' => (int)Tools::getValue('time', $time),
+			'ots' => (int)Tools::getValue('ots', $ots)
+		);
+		//recuperer tous les profiles valables
+		$all[] = Profile::getProfiles($this->context->language->id);
+		$taille = count($all[0]);
+		foreach ($all as $a) {
+			for ($i = 0; $i <= $taille - 1; $i++)
+				$choices[] = array('name' => $a[$i]['name'], 'id_profile' => (int)$a[$i]['id_profile'], 'val' => (int)$a[$i]['id_profile']);
+		}
+		$id_choices = array();
+		foreach ($choices as $choice) {
+			$id_choices[] = $choice['id_profile'];
+		}
+
+		//recupere le profile à l'aide de methode $_POST
+		$id_choices_post = array();
+		foreach ($id_choices as $id) {
+			if (Tools::getValue('profile[]_'.(int)$id)){
+				$id_choices_post['profile[]_'.(int)$id] = true;
+			}
+		}
+
+		//recuperer le profile à l'aide de la methode Configuration
+		$id_choices_config = array();
+		$actual_profiles = Db::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+		if ($confs = $actual_profiles){
+			$confs = explode(";", $actual_profiles);
+		}
+		else
+			$confs = array();
+
+		foreach ($confs as $conf) {
+			$id_choices_config['profile[]_'.(int)$conf] = true;
+		}
+
+		$config_fields = array_merge($config_fields, $id_choices_config);
+
+		return $config_fields;
+	}
+
+	public function renderFormEmployee()
+	{
+		$fields_form = array(
+			'form' => array(
+				'legend' => array(
+					'title' => $this->l('Settings'),
+					'icon' => 'icon-cogs'
+				),
+				'input' => array(
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New message notification'),
+						'name' => 'notif_message',
+						'desc' => $this->l('Receive a notification when a message is placed.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New order notification'),
+						'name' => 'notif_commande',
+						'desc' => $this->l('Receive a notification when an order is placed.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New customer notification'),
+						'name' => 'notif_customer',
+						'desc' => $this->l('Receive a notification when a new customer has just created an account.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('New return notification'),
+						'name' => 'notif_retour',
+						'desc' => $this->l('Receive a notification when a return is requested.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'switch',
+						'is_bool' => true,
+						'label' => $this->l('Out of stock notification'),
+						'name' => 'notif_ots',
+						'desc' => $this->l('Receive a notification when a product is considered as out of stock.'),
+						'values' => array(
+							array(
+								'id' => 'active_on',
+								'value' => 1,
+								'label' => $this->l('Enabled')
+							),
+							array(
+								'id' => 'active_off',
+								'value' => 0,
+								'label' => $this->l('Disabled')
+							)
+						),
+					),
+					array(
+						'type' => 'text',
+						'label' => $this->l('Threshold of out of stock'),
+						'name' => 'ots',
+						'class' => 'fixed-width-xs',
+						'desc' => $this->l('Set the value for which a product is considered as out of stock. The value must be positive.')
+					),
+				),
+				'submit' => array(
+					'title' => $this->l('Save')
+				)
+			),
+		);
+
+		$helper = new HelperForm();
+		$helper->show_toolbar = false;
+		$helper->table =  $this->table;
+		$lang = new Language((int)Configuration::get('PS_LANG_DEFAULT'));
+		$helper->default_form_language = $lang->id;
+		$helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
+		$this->fields_form = array();
+
+		$helper->identifier = $this->identifier;
+		$helper->submit_action = 'submitconfigurationemployee';
+		$helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+		$helper->token = Tools::getAdminTokenLite('AdminModules');
+		$helper->tpl_vars = array(
+			'fields_value' => $this->getConfigFieldsValuesEmployee(),
+			'languages' => $this->context->controller->getLanguages(),
+			'id_language' => $this->context->language->id
+		);
+		return $helper->generateForm(array($fields_form));
+
+	}
+
+	public function getConfigFieldsValuesEmployee()
+	{
+		global $cookie;
+
+		$employee = $cookie->id_employee;
+		$mess = DB::getInstance()->getValue('SELECT `notif_message` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$com = DB::getInstance()->getValue('SELECT `notif_commande` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$cus = DB::getInstance()->getValue('SELECT `notif_customer` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$ret = DB::getInstance()->getValue('SELECT `notif_retour` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$nots = DB::getInstance()->getValue('SELECT `notif_ots` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$ots = DB::getInstance()->getValue('SELECT `ots` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+
+		return array(
+			'notif_message' => (bool)Tools::getValue('notif_message', $mess),
+			'notif_commande' => (bool)Tools::getValue('notif_commande', $com),
+			'notif_customer' => (bool)Tools::getValue('notif_customer', $cus),
+			'notif_retour' => (bool)Tools::getValue('notif_retour', $ret),
+			'notif_ots' => (bool)Tools::getValue('notif_ots', $nots),
+			'ots' => (int)Tools::getValue('ots', $ots)
+		);
+	}
+
+	public function hookdisplayBackOfficeFooter($params)
+	{	
+		global $smarty;
+		global $cookie;
+
+		$employee = $cookie->id_employee;
+		$interval_value = Db::getInstance()->getValue('SELECT `time` FROM `'._DB_PREFIX_.'check_permission` WHERE `id_employe` = '.$employee.'');
+		$extension = '000';
+		$interval = $interval_value . $extension;
+		$domain_name = Db::getInstance()->getValue('SELECT `domain` FROM `'._DB_PREFIX_.'shop_url`');
+		$admin_dir_length = strlen(_PS_ADMIN_DIR_);
+		$dir_path = _PS_ADMIN_DIR_;
+		while ($dir_path[$admin_dir_length] != "/")
+		{
+			if ($dir_path[$admin_dir_length] != "/")
+			{
+				$dir_name[$a] = $dir_path[$admin_dir_length];
+			}
+			$admin_dir_length = $admin_dir_length - 1;
+			$a = $a + 1;
+		} 
+		$admin_dir = strrev(implode("", $dir_name));
+
+		$token = Tools::getToken(false);
+
+		//devise de la boutique (sign)
+		//$iso_code = $this->context->currency->sign;
+
+		$smarty->assign('token', $token);
+		$smarty->assign('interval', $interval);
+		$smarty->assign('domain_name', $domain_name);
+		$smarty->assign('admin_dir', $admin_dir);
+
+		return $this->display(__FILE__, 'webnotification.tpl');
+	}
+
+}
+
+?>

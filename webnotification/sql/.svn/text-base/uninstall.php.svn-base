@@ -1,0 +1,21 @@
+<?php
+	
+	$sql = array();
+
+	$sql[] = 'DROP TABLE `check_orders`';
+
+	$sql[] = 'DROP TABLE `check_employe`';
+
+	$sql[] = 'DROP TABLE `check_messages`';
+
+	$sql[] = 'DROP TABLE `check_returns`';
+
+	$sql[] = 'DROP TABLE `check_permission`';
+
+	$sql[] = 'DROP TABLE `check_profile`';
+
+	$sql[] = 'DROP TABLE `check_customers`';
+
+	$sql[] = 'DROP TABLE `check_ots`';
+
+?>

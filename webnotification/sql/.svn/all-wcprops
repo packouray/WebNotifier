@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/prestamodule/!svn/ver/3/trunk/dev/site/v1.5-1.6/webnotification/sql
+END
+install.php
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/prestamodule/!svn/ver/19/trunk/dev/site/v1.5-1.6/webnotification/sql/install.php
+END
+uninstall.php
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/prestamodule/!svn/ver/19/trunk/dev/site/v1.5-1.6/webnotification/sql/uninstall.php
+END

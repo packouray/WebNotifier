@@ -1,0 +1,30 @@
+<?php
+      
+    require_once(dirname(__FILE__).'/../../config/config.inc.php');
+    require_once(dirname(__FILE__).'/../../config/settings.inc.php');
+    require_once(dirname(__FILE__).'/../../classes/Cookie.php');
+
+    $cookie = new Cookie('psAdmin');
+
+    if (isset($cookie->id_employee) && $cookie->id_employee > 0) {
+      $employe = $cookie->id_employee;
+      $profile = $cookie->profile;
+    }
+    $profs = DB::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+    if (strpos($profs, $profile) !== FALSE) {
+        //on parcourt la table 
+        $customers = Db::getInstance()->ExecuteS('SELECT `id_customer` FROM `'._DB_PREFIX_.'check_customers` WHERE `reception` = 0');
+        foreach ($customers as $customer) {
+            $id_customer = $customer['id_customer'];
+            $reception = Db::getInstance()->getValue('SELECT `reception` FROM `'._DB_PREFIX_.'check_customers` WHERE `id_employe` = '.$employe.' AND `id_customer` = '.$id_customer.'');
+            if ($reception == 0) {
+                $update_tab_message = DB::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'check_customers` SET `reception` = 1 WHERE `id_customer` = '.$id_customer.' AND `id_employe` = '.$employe.'');
+                        echo '<script type="text/javascript" id="sc5">
+                            simulate(document.getElementById("notify"), "click");
+                            simulate(document.getElementById("show"), "click");
+                            simulate(document.getElementById("start_audio"), "click");
+                        </script>';
+            }
+        }
+
+    }

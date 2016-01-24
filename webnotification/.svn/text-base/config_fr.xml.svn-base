@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>webnotification</name>
+	<displayName><![CDATA[Notifications Web]]></displayName>
+	<version><![CDATA[1.0]]></version>
+	<description><![CDATA[Envoie une notification web &agrave; l&#039;employ&eacute; courant lorsqu&#039;un nouveau message, un nouveau retour ou une nouvelle commande est effectu&eacute;(e) sur la boutique.]]></description>
+	<author><![CDATA[Rpacka]]></author>
+	<tab><![CDATA[Notif_web]]></tab>
+	<confirmUninstall><![CDATA[Etes vous sûr de vouloir supprimer Notifications Web ?]]></confirmUninstall>
+	<is_configurable>1</is_configurable>
+	<need_instance>0</need_instance>
+	<limited_countries></limited_countries>
+</module>

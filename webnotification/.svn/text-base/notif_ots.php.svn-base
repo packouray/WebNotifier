@@ -1,0 +1,30 @@
+<?php
+      
+    require_once(dirname(__FILE__).'/../../config/config.inc.php');
+    require_once(dirname(__FILE__).'/../../config/settings.inc.php');
+    require_once(dirname(__FILE__).'/../../classes/Cookie.php');
+
+    $cookie = new Cookie('psAdmin');
+
+    if (isset($cookie->id_employee) && $cookie->id_employee > 0) {
+      $employe = $cookie->id_employee;
+      $profile = $cookie->profile;
+    }
+    $profs = DB::getInstance()->getValue('SELECT `profile` FROM `'._DB_PREFIX_.'check_profile`');
+    if (strpos($profs, $profile) !== FALSE) {
+        //on parcourt la table 
+        $ots_products = Db::getInstance()->ExecuteS('SELECT `id_ots` FROM `'._DB_PREFIX_.'check_ots` WHERE `reception` = 0');
+        //on recupere les infos de commande
+        foreach ($ots_products as $ots_product) {
+            $id_ots = $ots_product['id_ots'];
+            $reception = Db::getInstance()->getValue('SELECT `reception` FROM `'._DB_PREFIX_.'check_ots` WHERE `id_employe` = '.$employe.' AND `id_ots` = '.$id_ots.'');
+            if ($reception == 0) {
+            	$update_tab_message = DB::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'check_ots` SET `reception` = 1 WHERE `id_ots` = '.$id_ots.' AND `id_employe` = '.$employe.'');
+            	echo '<script type="text/javascript" id="sc4">
+                	simulate(document.getElementById("notify"), "click");
+                	simulate(document.getElementById("show"), "click");
+                	simulate(document.getElementById("start_audio"), "click");
+                	</script>';
+            }
+        }
+    }

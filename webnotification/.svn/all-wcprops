@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/prestamodule/!svn/ver/2/trunk/dev/site/v1.5-1.6/webnotification
+END
+webnotification.php
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/prestamodule/!svn/ver/18/trunk/dev/site/v1.5-1.6/webnotification/webnotification.php
+END
+notif_ots.php
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/prestamodule/!svn/ver/15/trunk/dev/site/v1.5-1.6/webnotification/notif_ots.php
+END
+config_fr.xml
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/prestamodule/!svn/ver/13/trunk/dev/site/v1.5-1.6/webnotification/config_fr.xml
+END
+datas.php
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/prestamodule/!svn/ver/10/trunk/dev/site/v1.5-1.6/webnotification/datas.php
+END
+webnotification.tpl
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/prestamodule/!svn/ver/18/trunk/dev/site/v1.5-1.6/webnotification/webnotification.tpl
+END
+customer_datas.php
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/prestamodule/!svn/ver/18/trunk/dev/site/v1.5-1.6/webnotification/customer_datas.php
+END
+logo.gif
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/prestamodule/!svn/ver/3/trunk/dev/site/v1.5-1.6/webnotification/logo.gif
+END
+notif_return.php
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/prestamodule/!svn/ver/8/trunk/dev/site/v1.5-1.6/webnotification/notif_return.php
+END
+returns_datas.php
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/prestamodule/!svn/ver/5/trunk/dev/site/v1.5-1.6/webnotification/returns_datas.php
+END
+notif.php
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/prestamodule/!svn/ver/6/trunk/dev/site/v1.5-1.6/webnotification/notif.php
+END
+notif_customer.php
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/prestamodule/!svn/ver/18/trunk/dev/site/v1.5-1.6/webnotification/notif_customer.php
+END
+ots_datas.php
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/prestamodule/!svn/ver/15/trunk/dev/site/v1.5-1.6/webnotification/ots_datas.php
+END
+messages_datas.php
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/prestamodule/!svn/ver/5/trunk/dev/site/v1.5-1.6/webnotification/messages_datas.php
+END
+notif_message.php
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/prestamodule/!svn/ver/8/trunk/dev/site/v1.5-1.6/webnotification/notif_message.php
+END
